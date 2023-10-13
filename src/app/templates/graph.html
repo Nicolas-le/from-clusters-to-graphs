@@ -1,0 +1,223 @@
+<head>
+  <style> body { margin: 0; } </style>
+
+  <script src="//unpkg.com/three"></script>
+  <script src="//unpkg.com/3d-force-graph"></script>
+  <script src="//unpkg.com/dat.gui"></script>
+  <!--<script src="../../dist/3d-force-graph.js"></script>-->
+  <link rel="stylesheet" type="text/css" href="./static/graph.css">
+</head>
+
+<body>
+  <div id="overlay">
+    <div id="imageContainer"></div>
+    <div id="textContainer"></div>
+  </div>
+  
+  <div id="3d-graph"></div>
+    <script>
+      // loading the json files
+      var gData = {{graph |tojson| safe}};
+
+      // Function to open the overlay and show the images
+      function openOverlay(images) {
+
+        const imageContainer = document.getElementById('imageContainer');
+        imageContainer.innerHTML = ''; // Clear any previous images
+
+        const textContainer = document.getElementById('textContainer');
+        textContainer.innerHTML = ''; // Clear any previous images
+
+        // Create <img> elements and append them to the image container
+        images.forEach(url => {
+          const img = document.createElement('img');
+          img.src = url;
+          imageContainer.appendChild(img);
+
+          const textElement = document.createElement('p');
+          var image_url = url.replace('./static/hdbscan_clusters/','');
+          //var image_caption = captionData[image_url]
+          var image_caption = ""
+
+          textElement.textContent = image_caption;
+
+          // Add event listener for hovering over the image
+          img.addEventListener('mouseenter', () => {
+            textContainer.appendChild(textElement); // Append text element to the image container
+          });
+
+          // Add event listener for moving away from the image
+          img.addEventListener('mouseleave', () => {
+            textContainer.removeChild(textElement); // Remove text element from the image container
+          });
+        });
+        
+        document.getElementById('overlay').classList.add('two-column'); // Add the class for two-column layout
+        document.getElementById('overlay').style.display = 'flex';
+      }
+
+      // Function to close the overlay
+      function closeOverlay() {
+        document.getElementById('overlay').style.display = 'none';
+      }
+
+      // Function to handle right-click on node
+      function handleNodeRightClick(node) {
+        if (!showImages) {
+          var imageUrls = [];
+          for (let i = 0; i < 80; i++) {
+            console.log(node.id);
+            var imageUrl = `./static/hdbscan_clusters/${node.id}_${i}.jpg`;
+            var imageExists = LinkCheck(imageUrl);
+            if (imageExists) {
+              console.log(node.id);
+              imageUrls.push(imageUrl);
+            } else {
+              break; // Break the loop if an image does not exist
+            }
+          }
+          openOverlay(imageUrls);
+          showImages = true;
+        } else {
+          closeOverlay();
+          showImages = false;
+        }
+      }
+
+      function LinkCheck(url){
+          var http = new XMLHttpRequest();
+          http.open('HEAD', url, false);
+          http.send();
+          return http.status!=404;
+      }
+
+      for (const [key, value] of Object.entries(gData["nodes"])) {
+          value["childLinks"] = [];
+          value["collapsed"] = false;
+      }
+
+      const nodesById = Object.fromEntries(gData.nodes.map(node => [node.id, node]));
+      gData.links.forEach(link => {
+        nodesById[link.source].childLinks.push(link);
+      });
+
+      var collap = false;
+      var showImages = false;
+      var depth = 1;
+
+      const getPrunedTree = (id) => {
+        const visibleNodes = [];
+        const visibleLinks = [];
+        var level = 0;
+        var start = true;
+        
+        (function traverseTree(node = nodesById[id]) {
+          visibleNodes.push(node);
+          if (!start && level == depth) {
+            return;
+          } else{
+          start = false;
+          level += 1;
+          }
+
+          visibleLinks.push(...node.childLinks);
+          node.childLinks
+            .map(link => ((typeof link.target) === 'object') ? link.target : nodesById[link.target]) 
+            .forEach(traverseTree);
+        })(); 
+        return { nodes: visibleNodes, links: visibleLinks };
+      };
+
+      const getCommunityTree = (community) => {
+        const visibleNodes = [];
+        const visibleLinks = [];
+        
+        for( var i = 0; i < gData["nodes"].length; i++){ 
+          console.log(gData["nodes"][i]["community"]);
+          if (gData["nodes"][i]["community"] == community){
+            visibleNodes.push(gData["nodes"][i]);
+          }
+        }
+
+        for( var i = 0; i < gData["links"].length; i++){ 
+            if (gData["links"][i]["source"]["community"] == community && gData["links"][i]["target"]["community"] == community) { 
+              visibleLinks.push(gData["links"][i]);
+            }
+          }
+        return { nodes: visibleNodes, links: visibleLinks };
+      };
+
+      const elem = document.getElementById('3d-graph');
+
+      const Graph = ForceGraph3D()
+        .graphData(gData)
+        .nodeLabel(node => node.id)
+        .linkWidth(link => ((link.weight*100)* (link.weight*100))/1000)
+        .linkOpacity(link => (1-link.weight)*(1-link.weight))
+        .onNodeClick(node => {
+          if (!collap){
+            if (node.childLinks.length) {
+              node.collapsed = !node.collapsed; 
+              Graph.graphData(getPrunedTree(node.id));
+              collap = true;
+            }
+          } else {
+            Graph.graphData(gData);
+            collap = false;
+          }
+        })
+        .onNodeRightClick(node => handleNodeRightClick(node))
+        (document.getElementById('3d-graph'))
+        .nodeThreeObject(({ id }) => {
+          const imgTexture = new THREE.TextureLoader().load(`./static/hdbscan_clusters/${id}_1.jpg`);
+          const material = new THREE.SpriteMaterial({ map: imgTexture });
+          const sprite = new THREE.Sprite(material); 
+          sprite.scale.set(25, 15);
+          return sprite;
+        });
+
+      const linkForce = Graph
+        .d3Force('link')
+        .distance(link => (((1-link.weight)*500)*((1-link.weight)*500))/1000);
+
+      function removeDisplay(){
+        Graph.scene().remove(Graph.camera());
+      }
+
+      const Settings = function() {
+        this.linkDepth = 1;
+        this.communityOnOff = false;
+        this.community = 0;
+      };
+
+      const settings = new Settings();
+      const gui = new dat.GUI();
+      const controllerOne = gui.add(settings, 'linkDepth', 1, 2).step(1);
+      const controllerTwo = gui.add(settings, 'communityOnOff');
+      const controllerThree = gui.add(settings, 'community', 0, 10).step(1);
+
+
+      controllerOne.onChange(updateDepth);
+      controllerTwo.onChange(showCommunity);
+      controllerThree.onChange(specifyCommunity);
+
+      function specifyCommunity() {
+        comm_number = settings.community;
+      }
+
+      comm_number = settings.community;
+      
+      function updateDepth() {
+        depth = settings.linkDepth;
+      }
+
+      function showCommunity(){
+        if (settings.communityOnOff) {
+          Graph.graphData(getCommunityTree(comm_number));
+        } else {
+          Graph.graphData(gData);
+        }
+      }
+
+  </script>
+</body>

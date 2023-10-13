@@ -1,0 +1,50 @@
+.clickable { cursor: unset !important }
+
+#overlay {
+position: fixed;
+top: 10%;
+left: 2%;
+width: 25%;
+height: 80%;
+background: rgba(0, 0, 0, 0.5);
+display: none; /* Hide the overlay by default */
+align-items: center;
+justify-content: center;
+z-index: 9999; /* Ensure the overlay is positioned on top */
+overflow: auto; /* Enable scrolling if content exceeds the div's size */
+font-family: Arial, Helvetica, sans-serif;
+color: white;
+font-size: 12px;
+}
+
+#textContainer {
+  position: fixed;
+  top: 0;
+  left: 2%;
+  z-index: 2;
+}
+
+#overlay {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+
+#imageContainer {
+display: flex;
+flex-wrap: wrap;
+}
+
+#imageContainer img {
+  width: calc(50% - 10px); /* Adjust the width of each image based on your preference */
+  height: auto;
+  margin: 5px; /* Add some margin for spacing between images */
+}
+
+#overlay.two-column {
+align-items: flex-start;
+justify-content: center;
+}
+
+#imageContainer.two-column {
+  width: 100%;
+}
