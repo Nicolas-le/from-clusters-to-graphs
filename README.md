@@ -11,12 +11,21 @@ Unlike most existing video analysis tools that focus on individual videos, our a
 ---
 
 ## Visualization
---> sr/app
-
-Quote -> andere Lib
+Related code in: ```/src/app```
 
 Video
 
+Due to copyright reasons of the news video data which was analyzed in the paper can not be made public. However, the code of the visualization should help to reproduce the visualization.
+
+To visualize the graph you need a data strcture such as ```/src/app/graph_communities_corr.json``` which is a saved [NetworkX](https://networkx.org/) graph. How the graph is exported can be found in ```/src/data_handling/graph.py```.
+
+Additionaly, you should locate up to 80 images for each of the clusters in the folder ```/src/app/hdbscan_clusters/```. File names should be structure like "(clusterID)_(increamenting number).jpg" (for cluster 0: 0_0.jpg, 0_1.jpg, ...).
+
+Afterwards you could adapt ```/src/app/backend.py``` with your file path and start backend.py in an environment with the dependcies installed.
+
 ## Creating the Datastructure
 
---> /src/data_handling
+Related code in: ```/src/data_handling```
+
+The prototype should be perceived as a conceptual framework rather than a pre-packaged tool that is immediately usable for all video collections. Nevertheless, both the concept and the code in this repository are flexible and can be tailored to meet individual requirements. The concept was originally conceived to facilitate the practicality of scalable viewing for various application scenarios.
+
