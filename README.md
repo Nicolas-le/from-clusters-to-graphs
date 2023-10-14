@@ -13,7 +13,12 @@ Unlike most existing video analysis tools that focus on individual videos, our a
 ## Visualization
 Related code in: ```/src/app```
 
-Video
+### Video
+
+
+https://github.com/Nicolas-le/from-clusters-to-graphs/assets/40566913/3fa33411-f39e-4cef-a65b-8b611db0d7ab
+
+
 
 Due to copyright reasons of the news video data which was analyzed in the paper can not be made public. However, the code of the visualization should help to reproduce the visualization.
 
